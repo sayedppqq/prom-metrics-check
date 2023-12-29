@@ -23,7 +23,7 @@ type queryInformation struct {
 }
 
 func main() {
-	url := "https://raw.githubusercontent.com/appscode/grafana-dashboards/metric/mongodb/mongodb-summary-dashboard.json"
+	url := "https://raw.githubusercontent.com/appscode/grafana-dashboards/master/mongodb/mongodb-pod-dashboard.json"
 	response, err := http.Get(url)
 	if err != nil {
 		fmt.Errorf("error : %s", err)
@@ -154,13 +154,15 @@ func getLabelNames(labelSelector string) []string {
 	commaSeparated := strings.Split(unQuoted, ",")
 	for _, s := range commaSeparated {
 		labelName := excludeNonAlphanumericUnderscore(s)
-		labelNames = append(labelNames, labelName)
+		if labelName != "" {
+			labelNames = append(labelNames, labelName)
+		}
 	}
 	return labelNames
 }
 
 // Finding valid bracket sequence from startPosition
-func substringInsideLabelSelector(query string, startPosition int) string {
+func substringInsideLabelSelector(query string, startPosition int) (string, int) {
 	balance := 0
 	closingPosition := startPosition
 	for i := startPosition; i < len(query); i++ {
@@ -176,7 +178,7 @@ func substringInsideLabelSelector(query string, startPosition int) string {
 		}
 	}
 
-	return query[startPosition+1 : closingPosition]
+	return query[startPosition+1 : closingPosition], closingPosition
 }
 
 // Metric names may contain ASCII letters, digits, underscores, and colons. It must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*
@@ -203,12 +205,13 @@ func getMetricAndLabels(query string) []queryInformation {
 				j--
 			}
 			metric := query[j:i]
-			labelSelector := substringInsideLabelSelector(query, i)
+			labelSelector, closingPosition := substringInsideLabelSelector(query, i)
 			labelNames := getLabelNames(labelSelector)
 			queries = append(queries, queryInformation{
 				metric:     metric,
 				labelNames: labelNames,
 			})
+			i = closingPosition
 		}
 	}
 	return queries
